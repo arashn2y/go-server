@@ -1,0 +1,24 @@
+meta {
+  name: Create Product
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{api}}/products
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "test",
+    "description": "test description",
+    "priceInCents": 20
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

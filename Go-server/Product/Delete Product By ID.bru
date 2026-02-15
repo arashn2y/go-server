@@ -1,0 +1,20 @@
+meta {
+  name: Delete Product By ID
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{api}}/products/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: fe4f2935-2a03-41a3-8060-7c98a7901d2b
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
