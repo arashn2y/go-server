@@ -39,7 +39,7 @@ Before running this project, ensure you have the following installed:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/arashn0uri/go-server.git
+   git clone https://github.com/arashn2y/go-server.git
    cd go-server
    ```
 
@@ -230,4 +230,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Author
 
-[arashn0uri](https://github.com/arashn0uri)
+[arashn2y](https://github.com/arashn2y)
