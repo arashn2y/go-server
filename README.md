@@ -223,11 +223,3 @@ The server includes the following middleware:
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Author
-
-[arashn2y](https://github.com/arashn2y)
