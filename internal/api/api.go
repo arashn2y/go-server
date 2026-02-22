@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 
+	DB "github.com/arashn0uri/go-server/internal/db"
+
 	"github.com/arashn0uri/go-server/internal/config"
 	"github.com/arashn0uri/go-server/internal/repository"
 	"github.com/arashn0uri/go-server/internal/routes"
@@ -56,7 +58,17 @@ func (app *application) Mount() (http.Handler, error) {
 		logrus.Info("connected to the database successfully")
 	}
 
+	// Initialize DB
 	db := repository.New(conn)
+
+	// Seed DB
+	seedErr := DB.Seed(ctx, db)
+
+	if seedErr != nil {
+		return nil, seedErr
+	}
+
+	// routes
 	routes := routes.New(db)
 
 	return routes, nil

@@ -11,19 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUser = `-- name: CreateUser :exec
-INSERT INTO "user" (name, email, password) VALUES ($1, $2, $3)
+const createUser = `-- name: CreateUser :one
+INSERT INTO "user" (name, email, password, is_active, role_id) VALUES ($1, $2, $3, $4, $5)
+RETURNING id
 `
 
 type CreateUserParams struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	IsActive bool   `json:"isActive"`
+	RoleID   int32  `json:"roleID"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser, arg.Name, arg.Email, arg.Password)
-	return err
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.Password,
+		arg.IsActive,
+		arg.RoleID,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteUser = `-- name: DeleteUser :execrows
@@ -39,7 +50,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error)
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, name, email, password, created_at, updated_at, deleted_at FROM "user"
+SELECT id, name, email, password, is_active, created_at, updated_at, deleted_at, role_id FROM "user"
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -56,9 +67,11 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Name,
 			&i.Email,
 			&i.Password,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.RoleID,
 		); err != nil {
 			return nil, err
 		}
@@ -71,7 +84,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, created_at, updated_at, deleted_at FROM "user" WHERE email = $1
+SELECT id, name, email, password, is_active, created_at, updated_at, deleted_at, role_id FROM "user" WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -82,15 +95,17 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Name,
 		&i.Email,
 		&i.Password,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.RoleID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password, created_at, updated_at, deleted_at FROM "user" WHERE id = $1
+SELECT id, name, email, password, is_active, created_at, updated_at, deleted_at, role_id FROM "user" WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -101,15 +116,17 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.Name,
 		&i.Email,
 		&i.Password,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.RoleID,
 	)
 	return i, err
 }
 
 const updateUser = `-- name: UpdateUser :execrows
-UPDATE "user" SET name = $2, email = $3, password = $4 WHERE id = $1
+UPDATE "user" SET name = $2, email = $3, password = $4, is_active = $5, updated_at = NOW() WHERE id = $1
 `
 
 type UpdateUserParams struct {
@@ -117,6 +134,7 @@ type UpdateUserParams struct {
 	Name     string      `json:"name"`
 	Email    string      `json:"email"`
 	Password string      `json:"password"`
+	IsActive bool        `json:"isActive"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int64, error) {
@@ -125,6 +143,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int64, 
 		arg.Name,
 		arg.Email,
 		arg.Password,
+		arg.IsActive,
 	)
 	if err != nil {
 		return 0, err

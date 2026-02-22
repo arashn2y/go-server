@@ -8,6 +8,7 @@ import (
 
 type Service interface {
 	Users(ctx context.Context) ([]repository.User, error)
+	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
 }
 
 type service struct {
@@ -28,4 +29,14 @@ func (s *service) Users(ctx context.Context) ([]repository.User, error) {
 	}
 
 	return users, nil
+}
+
+func (s *service) GetUserByEmail(ctx context.Context, email string) (repository.User, error) {
+	user, err := s.repository.GetUserByEmail(ctx, email)
+
+	if err != nil {
+		return repository.User{}, err
+	}
+
+	return user, nil
 }

@@ -48,7 +48,7 @@ func generateSalt(length uint32) ([]byte, error) {
 	return salt, nil
 }
 
-func hash(password string) (string, error) {
+func Hash(password string) (string, error) {
 	params := DefaultParams
 
 	pepper := config.GetEnv(config.EnvPepper)
@@ -133,7 +133,7 @@ func verify(password, encodedHash string) (bool, error) {
 
 func (s *service) Register(ctx context.Context, data form.Register) (string, error) {
 
-	hash, hashErr := hash(data.Password)
+	hash, hashErr := Hash(data.Password)
 	if hashErr != nil {
 		return "", hashErr
 	}
@@ -143,7 +143,7 @@ func (s *service) Register(ctx context.Context, data form.Register) (string, err
 		return "", errors.New("email already in use")
 	}
 
-	err := s.repository.CreateUser(ctx, repository.CreateUserParams{
+	_, err := s.repository.CreateUser(ctx, repository.CreateUserParams{
 		Name:     data.Name,
 		Email:    data.Email,
 		Password: hash,

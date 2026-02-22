@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Permission struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
 type Product struct {
 	ID           pgtype.UUID        `json:"id"`
 	Name         string             `json:"name"`
@@ -16,12 +21,31 @@ type Product struct {
 	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
 }
 
+type Role struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
+type RolePermission struct {
+	ID           int32  `json:"id"`
+	RoleID       int32  `json:"roleID"`
+	Resource     string `json:"resource"`
+	PermissionID int32  `json:"permissionID"`
+}
+
 type User struct {
 	ID        pgtype.UUID        `json:"id"`
 	Name      string             `json:"name"`
 	Email     string             `json:"email"`
 	Password  string             `json:"password"`
+	IsActive  bool               `json:"isActive"`
 	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
 	DeletedAt pgtype.Timestamptz `json:"deletedAt"`
+	RoleID    int32              `json:"roleID"`
+}
+
+type UserRole struct {
+	UserID pgtype.UUID `json:"userID"`
+	RoleID int32       `json:"roleID"`
 }
