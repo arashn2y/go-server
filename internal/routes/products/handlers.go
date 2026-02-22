@@ -1,7 +1,6 @@
 package products
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -36,7 +35,7 @@ func (h *Handler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := h.service.Products(r.Context())
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -49,14 +48,14 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	pgID, err := utils.ToPgUUID(productID)
 
 	if err != nil {
-		http.Error(w, "invalid product id", http.StatusBadRequest)
+		json.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
 	product, err := h.service.ProductByID(r.Context(), pgID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -67,14 +66,14 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req form.CreateProductRequest
 
 	if err := json.Read(r, &req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	err := h.service.CreateProduct(r.Context(), req)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -87,22 +86,21 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	pgID, err := utils.ToPgUUID(productID)
 
 	if err != nil {
-		http.Error(w, "invalid product id", http.StatusBadRequest)
+		json.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
 	var req form.UpdateProductRequest
 
 	if err := json.Read(r, &req); err != nil {
-		fmt.Println("error parsing request body:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	err = h.service.UpdateProduct(r.Context(), pgID, req)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -115,14 +113,19 @@ func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	pgID, err := utils.ToPgUUID(productID)
 
 	if err != nil {
-		http.Error(w, "invalid product id", http.StatusBadRequest)
+		json.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
 	}
 
-	err = h.service.DeleteProduct(r.Context(), pgID)
+	rows, err := h.service.DeleteProduct(r.Context(), pgID)
+
+	if rows == 0 {
+		json.WriteError(w, http.StatusNotFound, "product not found")
+		return
+	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

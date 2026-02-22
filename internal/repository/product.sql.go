@@ -26,13 +26,16 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) er
 	return err
 }
 
-const deleteProduct = `-- name: DeleteProduct :exec
+const deleteProduct = `-- name: DeleteProduct :execrows
 DELETE FROM product WHERE id = $1
 `
 
-func (q *Queries) DeleteProduct(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteProduct, id)
-	return err
+func (q *Queries) DeleteProduct(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProduct, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAllProducts = `-- name: GetAllProducts :many

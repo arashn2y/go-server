@@ -13,7 +13,7 @@ type Service interface {
 	ProductByID(ctx context.Context, id pgtype.UUID) (repository.Product, error)
 	CreateProduct(ctx context.Context, data form.CreateProductRequest) error
 	UpdateProduct(ctx context.Context, id pgtype.UUID, data form.UpdateProductRequest) error
-	DeleteProduct(ctx context.Context, id pgtype.UUID) error
+	DeleteProduct(ctx context.Context, id pgtype.UUID) (int64, error)
 }
 
 type service struct {
@@ -66,8 +66,8 @@ func (s *service) UpdateProduct(ctx context.Context, id pgtype.UUID, data form.U
 	return err
 }
 
-func (s *service) DeleteProduct(ctx context.Context, id pgtype.UUID) error {
-	err := s.repository.DeleteProduct(ctx, id)
+func (s *service) DeleteProduct(ctx context.Context, id pgtype.UUID) (int64, error) {
+	rows, err := s.repository.DeleteProduct(ctx, id)
 
-	return err
+	return rows, err
 }

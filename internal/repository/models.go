@@ -15,3 +15,13 @@ type Product struct {
 	PriceInCents int64              `json:"priceInCents"`
 	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
 }
+
+type User struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+	DeletedAt pgtype.Timestamptz `json:"deletedAt"`
+}

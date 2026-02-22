@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/arashn0uri/go-server/internal/config"
-	"github.com/arashn0uri/go-server/internal/products"
 	"github.com/arashn0uri/go-server/internal/repository"
+	"github.com/arashn0uri/go-server/internal/routes"
 )
 
 type application struct {
@@ -57,13 +57,9 @@ func (app *application) Mount() (http.Handler, error) {
 	}
 
 	db := repository.New(conn)
+	routes := routes.New(db)
 
-	// product
-	productService := products.NewService(db)
-	productHandler := products.NewHandler(productService)
-	productHandler.RegisterRoutes(r)
-
-	return r, nil
+	return routes, nil
 }
 
 func (app *application) Run(h http.Handler) error {
