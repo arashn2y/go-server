@@ -22,6 +22,7 @@ func NewHandler(service Service) *Handler {
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", h.Register)
+		r.Post("/login", h.Login)
 	})
 }
 
@@ -41,4 +42,22 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.Write(w, http.StatusOK, users)
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req form.Login
+
+	if err := json.Read(r, &req); err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	token, err := h.service.Login(r.Context(), req)
+
+	if err != nil {
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	json.Write(w, http.StatusOK, map[string]string{"token": token})
 }

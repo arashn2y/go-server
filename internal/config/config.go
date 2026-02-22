@@ -6,9 +6,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type EnvKey string
+
+const (
+	EnvAddr   EnvKey = "ADDR"
+	EnvDSN    EnvKey = "DSN"
+	EnvPepper EnvKey = "PASSWORD_PEPPER"
+)
+
 type Config struct {
-	Addr string
-	DB   DBConfig
+	Addr            string
+	DB              DBConfig
+	PASSWORD_PEPPER string
 }
 
 type DBConfig struct {
@@ -32,4 +41,12 @@ func Load() Config {
 	}
 
 	return cfg
+}
+
+func GetEnv(key EnvKey) string {
+	val := os.Getenv(string(key))
+	if val == "" {
+		panic("missing environment variable: " + string(key))
+	}
+	return val
 }

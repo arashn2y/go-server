@@ -4,6 +4,9 @@ SELECT * FROM "user";
 -- name: GetUserByID :one
 SELECT * FROM "user" WHERE id = $1;
 
+-- name: GetUserByEmail :one
+SELECT * FROM "user" WHERE email = $1;
+
 -- name: CreateUser :exec
 INSERT INTO "user" (name, email, password) VALUES ($1, $2, $3);
 
