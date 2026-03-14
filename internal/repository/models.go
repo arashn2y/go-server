@@ -17,6 +17,7 @@ type Product struct {
 	ID           pgtype.UUID        `json:"id"`
 	Name         string             `json:"name"`
 	Description  pgtype.Text        `json:"description"`
+	ImageUrl     pgtype.Text        `json:"imageUrl"`
 	PriceInCents int64              `json:"priceInCents"`
 	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
 }

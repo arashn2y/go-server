@@ -7,7 +7,7 @@ import (
 	"github.com/arashn0uri/go-server/internal/config"
 	"github.com/arashn0uri/go-server/internal/constants"
 	"github.com/arashn0uri/go-server/internal/repository"
-	"github.com/arashn0uri/go-server/internal/routes/auth"
+	"github.com/arashn0uri/go-server/internal/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,7 +70,7 @@ func seedSuperAdmin(ctx context.Context, db *repository.Queries) error {
 	superAdminName := config.GetEnv(config.EnvSuperAdminName)
 	superAdminEmail := config.GetEnv(config.EnvSuperAdminEmail)
 	superAdminPassword := config.GetEnv(config.EnvSuperAdminPassword)
-	hashedPassword, err := auth.Hash(superAdminPassword)
+	hashedPassword, err := utils.Hash(superAdminPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash super admin password: %w", err)
 	}

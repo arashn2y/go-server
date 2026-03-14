@@ -12,17 +12,23 @@ import (
 )
 
 const createProduct = `-- name: CreateProduct :exec
-INSERT INTO product (name, description, price_in_cents) VALUES ($1, $2, $3)
+INSERT INTO product (name, description, price_in_cents, image_url) VALUES ($1, $2, $3, $4)
 `
 
 type CreateProductParams struct {
 	Name         string      `json:"name"`
 	Description  pgtype.Text `json:"description"`
 	PriceInCents int64       `json:"priceInCents"`
+	ImageUrl     pgtype.Text `json:"imageUrl"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) error {
-	_, err := q.db.Exec(ctx, createProduct, arg.Name, arg.Description, arg.PriceInCents)
+	_, err := q.db.Exec(ctx, createProduct,
+		arg.Name,
+		arg.Description,
+		arg.PriceInCents,
+		arg.ImageUrl,
+	)
 	return err
 }
 
@@ -39,7 +45,7 @@ func (q *Queries) DeleteProduct(ctx context.Context, id pgtype.UUID) (int64, err
 }
 
 const getAllProducts = `-- name: GetAllProducts :many
-SELECT id, name, description, price_in_cents, created_at FROM product
+SELECT id, name, description, image_url, price_in_cents, created_at FROM product
 `
 
 func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
@@ -55,6 +61,7 @@ func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
 			&i.ID,
 			&i.Name,
 			&i.Description,
+			&i.ImageUrl,
 			&i.PriceInCents,
 			&i.CreatedAt,
 		); err != nil {
@@ -69,7 +76,7 @@ func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, name, description, price_in_cents, created_at FROM product WHERE id = $1
+SELECT id, name, description, image_url, price_in_cents, created_at FROM product WHERE id = $1
 `
 
 func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (Product, error) {
@@ -79,6 +86,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (Product, 
 		&i.ID,
 		&i.Name,
 		&i.Description,
+		&i.ImageUrl,
 		&i.PriceInCents,
 		&i.CreatedAt,
 	)
@@ -86,7 +94,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id pgtype.UUID) (Product, 
 }
 
 const updateProduct = `-- name: UpdateProduct :exec
-UPDATE product SET name = $2, description = $3, price_in_cents = $4 WHERE id = $1
+UPDATE product SET name = $2, description = $3, price_in_cents = $4, image_url = $5 WHERE id = $1
 `
 
 type UpdateProductParams struct {
@@ -94,6 +102,7 @@ type UpdateProductParams struct {
 	Name         string      `json:"name"`
 	Description  pgtype.Text `json:"description"`
 	PriceInCents int64       `json:"priceInCents"`
+	ImageUrl     pgtype.Text `json:"imageUrl"`
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) error {
@@ -102,6 +111,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 		arg.Name,
 		arg.Description,
 		arg.PriceInCents,
+		arg.ImageUrl,
 	)
 	return err
 }

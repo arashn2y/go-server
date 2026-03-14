@@ -16,6 +16,10 @@ const (
 	EnvSuperAdminEmail    EnvKey = "SUPERADMIN_EMAIL"
 	EnvSuperAdminPassword EnvKey = "SUPERADMIN_PASSWORD"
 	EnvJWTSecret          EnvKey = "JWT_SECRET"
+	R2AccountID           EnvKey = "R2_ACCOUNT_ID"
+	R2AccessKeyID         EnvKey = "R2_ACCESS_KEY_ID"
+	R2SecretAccessKey     EnvKey = "R2_SECRET_ACCESS_KEY"
+	R2Bucket              EnvKey = "R2_BUCKET"
 )
 
 type Config struct {

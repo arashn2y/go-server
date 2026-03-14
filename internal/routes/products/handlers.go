@@ -65,8 +65,8 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req form.CreateProductRequest
 
-	if err := json.Read(r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+	if err := json.ReadMultipart(r, &req); err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	var req form.UpdateProductRequest
 
-	if err := json.Read(r, &req); err != nil {
+	if err := json.ReadMultipart(r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}

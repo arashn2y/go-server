@@ -2,12 +2,15 @@ package products
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/arashn0uri/go-server/internal/constants"
 	"github.com/arashn0uri/go-server/internal/form"
 	"github.com/arashn0uri/go-server/internal/models"
 	"github.com/arashn0uri/go-server/internal/repository"
 	"github.com/arashn0uri/go-server/internal/routes/permissions"
+	"github.com/arashn0uri/go-server/internal/utils"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -45,6 +48,7 @@ func (s *service) Products(ctx context.Context) (*[]models.Product, error) {
 			ID:          product.ID,
 			Name:        product.Name,
 			Description: product.Description.String,
+			ImageUrl:    product.ImageUrl.String,
 			Price:       float64(product.PriceInCents) / 100,
 		}
 	}
@@ -63,6 +67,7 @@ func (s *service) ProductByID(ctx context.Context, id pgtype.UUID) (*models.Prod
 		ID:          product.ID,
 		Name:        product.Name,
 		Description: product.Description.String,
+		ImageUrl:    product.ImageUrl.String,
 		Price:       float64(product.PriceInCents) / 100,
 	}
 
@@ -70,17 +75,28 @@ func (s *service) ProductByID(ctx context.Context, id pgtype.UUID) (*models.Prod
 }
 
 func (s *service) CreateProduct(ctx context.Context, data form.CreateProductRequest) error {
-	permissionErr := s.permission.CheckPermission(ctx, string(constants.ResourceProducts), string(constants.PermissionCreate))
-	if permissionErr != nil {
-		return permissionErr
+	err := s.permission.CheckPermission(ctx, string(constants.ResourceProducts), string(constants.PermissionCreate))
+	if err != nil {
+		return err
 	}
-	err := s.repository.CreateProduct(ctx, repository.CreateProductParams{
+
+	// Build R2 key and upload image
+	imageKey := fmt.Sprintf("products/%s/%s", uuid.New().String(), data.ImageHeader.Filename)
+	contentType := data.ImageHeader.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	if err := utils.UploadFile(ctx, imageKey, data.Image, contentType); err != nil {
+		return fmt.Errorf("upload image: %w", err)
+	}
+
+	return s.repository.CreateProduct(ctx, repository.CreateProductParams{
 		Name:         data.Name,
 		Description:  pgtype.Text{String: data.Description, Valid: true},
 		PriceInCents: data.PriceInCents,
+		ImageUrl:     pgtype.Text{String: imageKey, Valid: true},
 	})
-
-	return err
 }
 
 func (s *service) UpdateProduct(ctx context.Context, id pgtype.UUID, data form.UpdateProductRequest) error {
