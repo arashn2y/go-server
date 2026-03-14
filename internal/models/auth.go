@@ -16,4 +16,5 @@ type Claims struct {
 type LoginResponse struct {
 	Token       string                             `json:"token"`
 	Permissions []repository.GetUserPermissionsRow `json:"permissions"`
+	ID          pgtype.UUID                        `json:"id"`
 }

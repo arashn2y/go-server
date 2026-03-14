@@ -3,8 +3,10 @@ package products
 import (
 	"context"
 
+	"github.com/arashn0uri/go-server/internal/constants"
 	"github.com/arashn0uri/go-server/internal/form"
 	"github.com/arashn0uri/go-server/internal/repository"
+	"github.com/arashn0uri/go-server/internal/routes/permissions"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,11 +20,13 @@ type Service interface {
 
 type service struct {
 	repository *repository.Queries
+	permission permissions.Service
 }
 
-func NewService(db *repository.Queries) Service {
+func NewService(db *repository.Queries, permission permissions.Service) Service {
 	return &service{
 		repository: db,
+		permission: permission,
 	}
 }
 
@@ -46,6 +50,10 @@ func (s *service) ProductByID(ctx context.Context, id pgtype.UUID) (repository.P
 }
 
 func (s *service) CreateProduct(ctx context.Context, data form.CreateProductRequest) error {
+	permissionErr := s.permission.CheckPermission(ctx, string(constants.ResourceProducts), string(constants.PermissionCreate))
+	if permissionErr != nil {
+		return permissionErr
+	}
 	err := s.repository.CreateProduct(ctx, repository.CreateProductParams{
 		Name:         data.Name,
 		Description:  pgtype.Text{String: data.Description, Valid: true},

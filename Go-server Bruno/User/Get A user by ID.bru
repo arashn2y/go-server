@@ -1,13 +1,17 @@
 meta {
-  name: Get All Users
+  name: Get A user by ID
   type: http
-  seq: 1
+  seq: 3
 }
 
 get {
-  url: {{api}}/users
+  url: {{api}}/users/:id
   body: none
   auth: bearer
+}
+
+params:path {
+  id: a731168e-7b73-4e91-9933-e962df83ed61
 }
 
 auth:bearer {

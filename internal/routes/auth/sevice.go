@@ -67,6 +67,27 @@ func GenerateToken(userID pgtype.UUID, email string, roleId int32) (string, erro
 	return token.SignedString(secret)
 }
 
+func ValidateToken(tokenStr string) (*models.Claims, error) {
+	secret := []byte(config.GetEnv(config.EnvJWTSecret))
+
+	token, err := jwt.ParseWithClaims(tokenStr, &models.Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return secret, nil
+	})
+	if err != nil || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(*models.Claims)
+	if !ok {
+		return nil, errors.New("invalid claims")
+	}
+
+	return claims, nil
+}
+
 func (s *service) Register(ctx context.Context, data form.Register) (string, error) {
 
 	hash, hashErr := Hash(data.Password)
@@ -84,11 +105,20 @@ func (s *service) Register(ctx context.Context, data form.Register) (string, err
 		return "", errors.New("invalid role")
 	}
 
-	_, err := s.repository.CreateUser(ctx, repository.CreateUserParams{
+	newUserID, err := s.repository.CreateUser(ctx, repository.CreateUserParams{
 		Name:     data.Name,
 		Email:    data.Email,
 		Password: hash,
 		RoleID:   role.ID,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	err = s.repository.AssignRoleToUser(ctx, repository.AssignRoleToUserParams{
+		UserID: newUserID,
+		RoleID: role.ID,
 	})
 
 	if err != nil {
@@ -106,11 +136,7 @@ func (s *service) Login(ctx context.Context, data form.Login) (models.LoginRespo
 	}
 
 	match, verifyErr := Verify(data.Password, user.Password)
-	if verifyErr != nil {
-		return models.LoginResponse{}, errors.New("invalid email or password")
-	}
-
-	if !match {
+	if verifyErr != nil || !match {
 		return models.LoginResponse{}, errors.New("invalid email or password")
 	}
 
@@ -129,6 +155,7 @@ func (s *service) Login(ctx context.Context, data form.Login) (models.LoginRespo
 	return models.LoginResponse{
 		Token:       jwtToken,
 		Permissions: userPermissions,
+		ID:          user.ID,
 	}, nil
 
 }

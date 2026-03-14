@@ -3,8 +3,11 @@ package constants
 type Resource string
 type Role string
 type Permission string
+type contextKey string
 
 const (
+	ContextKeyUserID contextKey = "user_id"
+
 	ResourceUsers    Resource = "users"
 	ResourceProducts Resource = "products"
 
