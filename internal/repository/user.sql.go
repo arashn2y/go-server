@@ -125,6 +125,41 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	return i, err
 }
 
+const getUserPermissions = `-- name: GetUserPermissions :many
+SELECT
+    p.name AS action,
+    rp.resource AS subject
+FROM user_role ur
+JOIN role_permission rp ON rp.role_id = ur.role_id
+JOIN permission p ON p.id = rp.permission_id
+WHERE ur.user_id = $1
+`
+
+type GetUserPermissionsRow struct {
+	Action  string `json:"action"`
+	Subject string `json:"subject"`
+}
+
+func (q *Queries) GetUserPermissions(ctx context.Context, userID pgtype.UUID) ([]GetUserPermissionsRow, error) {
+	rows, err := q.db.Query(ctx, getUserPermissions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserPermissionsRow
+	for rows.Next() {
+		var i GetUserPermissionsRow
+		if err := rows.Scan(&i.Action, &i.Subject); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUser = `-- name: UpdateUser :execrows
 UPDATE "user" SET name = $2, email = $3, password = $4, is_active = $5, updated_at = NOW() WHERE id = $1
 `

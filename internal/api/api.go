@@ -10,22 +10,20 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 
-	DB "github.com/arashn0uri/go-server/internal/db"
-
 	"github.com/arashn0uri/go-server/internal/config"
 	"github.com/arashn0uri/go-server/internal/repository"
 	"github.com/arashn0uri/go-server/internal/routes"
 )
 
 type application struct {
-	config config.Config
-	db     *pgx.Conn
+	cfg config.Config
+	db  *pgx.Conn
 }
 
 func LoadApplication() application {
-	cfg := config.Load()
+	config := config.Load()
 	application := application{
-		config: cfg,
+		cfg: config,
 	}
 
 	return application
@@ -51,7 +49,7 @@ func (app *application) Mount() (http.Handler, error) {
 
 	ctx := context.Background()
 
-	conn, err := pgx.Connect(ctx, app.config.DB.DSN)
+	conn, err := pgx.Connect(ctx, app.cfg.DB.DSN)
 	if err != nil {
 		return nil, err
 	} else {
@@ -60,13 +58,6 @@ func (app *application) Mount() (http.Handler, error) {
 
 	// Initialize DB
 	db := repository.New(conn)
-
-	// Seed DB
-	seedErr := DB.Seed(ctx, db)
-
-	if seedErr != nil {
-		return nil, seedErr
-	}
 
 	// routes
 	routes := routes.New(db)
@@ -77,14 +68,14 @@ func (app *application) Mount() (http.Handler, error) {
 func (app *application) Run(h http.Handler) error {
 	defer app.db.Close(context.Background())
 	srv := &http.Server{
-		Addr:         app.config.Addr,
+		Addr:         app.cfg.Addr,
 		Handler:      h,
 		WriteTimeout: time.Second * 30,
 		ReadTimeout:  time.Second * 10,
 		IdleTimeout:  time.Minute,
 	}
 
-	logrus.Info("Server is running on port", app.config.Addr)
+	logrus.Info("Server is running on port", app.cfg.Addr)
 
 	return srv.ListenAndServe()
 }

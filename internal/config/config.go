@@ -9,9 +9,13 @@ import (
 type EnvKey string
 
 const (
-	EnvAddr   EnvKey = "ADDR"
-	EnvDSN    EnvKey = "DSN"
-	EnvPepper EnvKey = "PASSWORD_PEPPER"
+	EnvAddr               EnvKey = "ADDR"
+	EnvDSN                EnvKey = "DSN"
+	EnvPepper             EnvKey = "PASSWORD_PEPPER"
+	EnvSuperAdminName     EnvKey = "SUPERADMIN_NAME"
+	EnvSuperAdminEmail    EnvKey = "SUPERADMIN_EMAIL"
+	EnvSuperAdminPassword EnvKey = "SUPERADMIN_PASSWORD"
+	EnvJWTSecret          EnvKey = "JWT_SECRET"
 )
 
 type Config struct {

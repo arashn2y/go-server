@@ -1,9 +1,10 @@
-package db
+package main
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/arashn0uri/go-server/internal/config"
 	"github.com/arashn0uri/go-server/internal/constants"
 	"github.com/arashn0uri/go-server/internal/repository"
 	"github.com/arashn0uri/go-server/internal/routes/auth"
@@ -22,6 +23,9 @@ func Seed(ctx context.Context, db *repository.Queries) error {
 	}
 	if err := seedAdminRolePermissions(ctx, db); err != nil {
 		return fmt.Errorf("failed to seed admin role permissions: %w", err)
+	}
+	if err := seedUserRolePermissions(ctx, db); err != nil {
+		return fmt.Errorf("failed to seed user role permissions: %w", err)
 	}
 	return nil
 }
@@ -63,15 +67,18 @@ func seedPermissions(ctx context.Context, db *repository.Queries) error {
 
 func seedSuperAdmin(ctx context.Context, db *repository.Queries) error {
 	logrus.Info("seeding super admin user...")
-	user := repository.CreateUserParams{
-		Name:     "Arash",
-		Email:    "arashn2y@gmail.com",
-		Password: "Arash2026!", // Needs to pass the hashed password instead of plain text
-		IsActive: true,
-	}
-	hash, err := auth.Hash(user.Password)
+	superAdminName := config.GetEnv(config.EnvSuperAdminName)
+	superAdminEmail := config.GetEnv(config.EnvSuperAdminEmail)
+	superAdminPassword := config.GetEnv(config.EnvSuperAdminPassword)
+	hashedPassword, err := auth.Hash(superAdminPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash super admin password: %w", err)
+	}
+	user := repository.CreateUserParams{
+		Name:     superAdminName,
+		Email:    superAdminEmail,
+		Password: hashedPassword,
+		IsActive: true,
 	}
 
 	role, err := db.GetRoleByName(ctx, string(constants.RoleSuperAdmin))
@@ -88,7 +95,7 @@ func seedSuperAdmin(ctx context.Context, db *repository.Queries) error {
 	id, err := db.CreateUser(ctx, repository.CreateUserParams{
 		Name:     user.Name,
 		Email:    user.Email,
-		Password: hash,
+		Password: user.Password,
 		IsActive: user.IsActive,
 		RoleID:   role.ID,
 	})
@@ -103,21 +110,19 @@ func seedSuperAdmin(ctx context.Context, db *repository.Queries) error {
 	})
 
 	// assign all permissions to super_admin role
-	permissions, err := db.GetAllPermissions(ctx)
+	permission, err := db.GetPermissionByName(ctx, string(constants.PermissionAll))
 	if err != nil {
 		return fmt.Errorf("failed to get permissions: %w", err)
 	}
 
-	for _, perm := range permissions {
-		for _, resource := range constants.Resources {
-			err = db.AssignPermissionToRole(ctx, repository.AssignPermissionToRoleParams{
-				RoleID:       role.ID,
-				Resource:     string(resource),
-				PermissionID: perm.ID,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to assign permission %s on resource %s to super admin role: %w", perm.Name, resource, err)
-			}
+	for _, resource := range constants.Resources {
+		err = db.AssignPermissionToRole(ctx, repository.AssignPermissionToRoleParams{
+			RoleID:       role.ID,
+			Resource:     string(resource),
+			PermissionID: permission.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to assign permission %s on resource %s to super admin role: %w", permission.Name, resource, err)
 		}
 	}
 
@@ -143,14 +148,27 @@ func seedAdminRolePermissions(ctx context.Context, db *repository.Queries) error
 			continue // skip delete permission for admin role
 		}
 		for _, resource := range constants.Resources {
-			permission, err := db.GetPermissionsByRoleID(ctx, repository.GetPermissionsByRoleIDParams{
+			rolePerms, err := db.GetRolePermissionsByRoleID(ctx, repository.GetRolePermissionsByRoleIDParams{
 				RoleID:   role.ID,
 				Resource: string(resource),
 			})
-			if err == nil && len(permission) > 0 {
+			if err != nil {
+				return fmt.Errorf("failed to get role permissions for role %d resource %s: %w", role.ID, resource, err)
+			}
+
+			exists := false
+			for _, rp := range rolePerms {
+				if rp.PermissionID == perm.ID {
+					exists = true
+					break
+				}
+			}
+
+			if exists {
 				logrus.Infof("permission %s on resource %s already assigned to admin role, skipping", perm.Name, resource)
 				continue
 			}
+
 			err = db.AssignPermissionToRole(ctx, repository.AssignPermissionToRoleParams{
 				RoleID:       role.ID,
 				Resource:     string(resource),
@@ -163,5 +181,57 @@ func seedAdminRolePermissions(ctx context.Context, db *repository.Queries) error
 	}
 
 	logrus.Info("admin role permissions seeded successfully")
+	return nil
+}
+
+func seedUserRolePermissions(ctx context.Context, db *repository.Queries) error {
+	// A User can only read resources
+	logrus.Info("seeding user role permissions...")
+	role, err := db.GetRoleByName(ctx, string(constants.RoleUser))
+	if err != nil {
+		return fmt.Errorf("failed to get user role: %w", err)
+	}
+
+	permission, err := db.GetPermissionByName(ctx, string(constants.PermissionRead))
+	if err != nil {
+		return fmt.Errorf("failed to get read permission: %w", err)
+	}
+
+	for _, resource := range constants.Resources {
+		if resource == constants.ResourceUsers {
+			continue // skip users resource for user role
+		}
+		rolePerms, err := db.GetRolePermissionsByRoleID(ctx, repository.GetRolePermissionsByRoleIDParams{
+			RoleID:   role.ID,
+			Resource: string(resource),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get role permissions for role %d resource %s: %w", role.ID, resource, err)
+		}
+
+		exists := false
+		for _, rp := range rolePerms {
+			if rp.PermissionID == permission.ID {
+				exists = true
+				break
+			}
+		}
+
+		if exists {
+			logrus.Infof("permission %s on resource %s already assigned to user role, skipping", permission.Name, resource)
+			continue
+		}
+
+		err = db.AssignPermissionToRole(ctx, repository.AssignPermissionToRoleParams{
+			RoleID:       role.ID,
+			Resource:     string(resource),
+			PermissionID: permission.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to assign permission %s on resource %s to user role: %w", permission.Name, resource, err)
+		}
+	}
+
+	logrus.Info("user role permissions seeded successfully")
 	return nil
 }

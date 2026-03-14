@@ -2,23 +2,23 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
-	"encoding/base64"
 	"errors"
-	"fmt"
-	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/alexedwards/argon2id"
 	"github.com/arashn0uri/go-server/internal/config"
+	"github.com/arashn0uri/go-server/internal/constants"
 	"github.com/arashn0uri/go-server/internal/form"
 	"github.com/arashn0uri/go-server/internal/models"
 	"github.com/arashn0uri/go-server/internal/repository"
-	"golang.org/x/crypto/argon2"
 )
 
 type Service interface {
 	Register(ctx context.Context, data form.Register) (string, error)
-	Login(ctx context.Context, data form.Login) (string, error)
+	Login(ctx context.Context, data form.Login) (models.LoginResponse, error)
 }
 
 type service struct {
@@ -31,7 +31,7 @@ func NewService(db *repository.Queries) Service {
 	}
 }
 
-var DefaultParams = &models.HashParams{
+var DefaultParams = &argon2id.Params{
 	Memory:      64 * 1024,
 	Iterations:  3,
 	Parallelism: 2,
@@ -39,96 +39,32 @@ var DefaultParams = &models.HashParams{
 	KeyLength:   32,
 }
 
-func generateSalt(length uint32) ([]byte, error) {
-	salt := make([]byte, length)
-	_, err := rand.Read(salt)
-	if err != nil {
-		return nil, err
-	}
-	return salt, nil
-}
-
 func Hash(password string) (string, error) {
-	params := DefaultParams
-
 	pepper := config.GetEnv(config.EnvPepper)
-
-	salt, err := generateSalt(params.SaltLength)
-	if err != nil {
-		return "", err
-	}
-
-	// Add pepper before hashing
-	combined := password + pepper
-
-	hash := argon2.IDKey(
-		[]byte(combined),
-		salt,
-		params.Iterations,
-		params.Memory,
-		params.Parallelism,
-		params.KeyLength,
-	)
-
-	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
-	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
-
-	encoded := fmt.Sprintf(
-		"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
-		params.Memory,
-		params.Iterations,
-		params.Parallelism,
-		b64Salt,
-		b64Hash,
-	)
-
-	return encoded, nil
+	return argon2id.CreateHash(password+pepper, DefaultParams)
 }
 
-func verify(password, encodedHash string) (bool, error) {
-	parts := strings.Split(encodedHash, "$")
-	if len(parts) != 6 {
-		return false, errors.New("invalid hash format")
-	}
-
-	var memory uint32
-	var iterations uint32
-	var parallelism uint8
-
-	_, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d",
-		&memory, &iterations, &parallelism)
-	if err != nil {
-		return false, err
-	}
-
-	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
-	if err != nil {
-		return false, err
-	}
-
-	expectedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
-	if err != nil {
-		return false, err
-	}
-
+func Verify(password, encodedHash string) (bool, error) {
 	pepper := config.GetEnv(config.EnvPepper)
 
-	combined := password + pepper
+	return argon2id.ComparePasswordAndHash(password+pepper, encodedHash)
+}
 
-	computedHash := argon2.IDKey(
-		[]byte(combined),
-		salt,
-		iterations,
-		memory,
-		parallelism,
-		uint32(len(expectedHash)),
-	)
+func GenerateToken(userID pgtype.UUID, email string, roleId int32) (string, error) {
+	secret := []byte(config.GetEnv(config.EnvJWTSecret))
 
-	if subtle.ConstantTimeCompare(expectedHash, computedHash) == 1 {
-		return true, nil
+	claims := models.Claims{
+		UserID: userID,
+		Email:  email,
+		RoleID: roleId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
-	return false, nil
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(secret)
 }
 
 func (s *service) Register(ctx context.Context, data form.Register) (string, error) {
@@ -143,10 +79,16 @@ func (s *service) Register(ctx context.Context, data form.Register) (string, err
 		return "", errors.New("email already in use")
 	}
 
+	role, roleErr := s.repository.GetRoleByName(ctx, data.Role)
+	if roleErr != nil || role.Name == string(constants.RoleSuperAdmin) {
+		return "", errors.New("invalid role")
+	}
+
 	_, err := s.repository.CreateUser(ctx, repository.CreateUserParams{
 		Name:     data.Name,
 		Email:    data.Email,
 		Password: hash,
+		RoleID:   role.ID,
 	})
 
 	if err != nil {
@@ -156,21 +98,37 @@ func (s *service) Register(ctx context.Context, data form.Register) (string, err
 	return "User registered successfully", nil
 }
 
-func (s *service) Login(ctx context.Context, data form.Login) (string, error) {
+func (s *service) Login(ctx context.Context, data form.Login) (models.LoginResponse, error) {
 	user, err := s.repository.GetUserByEmail(ctx, data.Email)
 
 	if err != nil {
-		return "", errors.New("invalid email or password")
+		return models.LoginResponse{}, errors.New("invalid email or password")
 	}
 
-	match, verifyErr := verify(data.Password, user.Password)
+	match, verifyErr := Verify(data.Password, user.Password)
 	if verifyErr != nil {
-		return "", errors.New("invalid email or password")
+		return models.LoginResponse{}, errors.New("invalid email or password")
 	}
 
 	if !match {
-		return "", errors.New("invalid email or password")
+		return models.LoginResponse{}, errors.New("invalid email or password")
 	}
 
-	return "Login successful", nil
+	userPermissions, permErr := s.repository.GetUserPermissions(ctx, user.ID)
+
+	if permErr != nil {
+		return models.LoginResponse{}, errors.New("failed to retrieve user permissions")
+	}
+
+	// Generate and return JWT token
+	jwtToken, tokenErr := GenerateToken(user.ID, user.Email, user.RoleID)
+	if tokenErr != nil {
+		return models.LoginResponse{}, errors.New("failed to generate JWT token")
+	}
+
+	return models.LoginResponse{
+		Token:       jwtToken,
+		Permissions: userPermissions,
+	}, nil
+
 }

@@ -10,7 +10,7 @@ import (
 )
 
 const assignPermissionToRole = `-- name: AssignPermissionToRole :exec
-INSERT INTO role_permission (role_id, resource, permission_id) VALUES ($1, $2, $3)
+INSERT INTO role_permission (role_id, resource, permission_id) VALUES ($1, $2, $3) ON CONFLICT (role_id, resource, permission_id) DO NOTHING
 `
 
 type AssignPermissionToRoleParams struct {
@@ -143,6 +143,41 @@ func (q *Queries) GetPermissionsByRoleIDAndResource(ctx context.Context, arg Get
 	for rows.Next() {
 		var i Permission
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRolePermissionsByRoleID = `-- name: GetRolePermissionsByRoleID :many
+SELECT rp.id, rp.role_id, rp.resource, rp.permission_id FROM role_permission rp
+WHERE rp.role_id = $1 AND rp.resource = $2
+`
+
+type GetRolePermissionsByRoleIDParams struct {
+	RoleID   int32  `json:"roleID"`
+	Resource string `json:"resource"`
+}
+
+func (q *Queries) GetRolePermissionsByRoleID(ctx context.Context, arg GetRolePermissionsByRoleIDParams) ([]RolePermission, error) {
+	rows, err := q.db.Query(ctx, getRolePermissionsByRoleID, arg.RoleID, arg.Resource)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RolePermission
+	for rows.Next() {
+		var i RolePermission
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoleID,
+			&i.Resource,
+			&i.PermissionID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

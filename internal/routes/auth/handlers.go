@@ -52,12 +52,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.service.Login(r.Context(), req)
+	user, err := h.service.Login(r.Context(), req)
 
 	if err != nil {
 		json.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	json.Write(w, http.StatusOK, map[string]string{"token": token})
+	json.Write(w, http.StatusOK, user)
 }

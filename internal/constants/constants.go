@@ -15,10 +15,11 @@ const (
 
 	PermissionAll    Permission = "all"
 	PermissionRead   Permission = "read"
-	PermissionWrite  Permission = "write"
+	PermissionCreate Permission = "create"
+	PermissionUpdate Permission = "update"
 	PermissionDelete Permission = "delete"
 )
 
-var Actions = []Permission{PermissionAll, PermissionRead, PermissionWrite, PermissionDelete}
+var Actions = []Permission{PermissionAll, PermissionRead, PermissionCreate, PermissionUpdate, PermissionDelete}
 var Roles = []Role{RoleSuperAdmin, RoleAdmin, RoleUser, RoleViewer}
 var Resources = []Resource{ResourceUsers, ResourceProducts}

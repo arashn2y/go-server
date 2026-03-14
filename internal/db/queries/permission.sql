@@ -27,7 +27,11 @@ JOIN role_permission rp ON p.id = rp.permission_id
 WHERE rp.role_id = $1 AND rp.resource = $2;
 
 -- name: AssignPermissionToRole :exec
-INSERT INTO role_permission (role_id, resource, permission_id) VALUES ($1, $2, $3);
+INSERT INTO role_permission (role_id, resource, permission_id) VALUES ($1, $2, $3) ON CONFLICT (role_id, resource, permission_id) DO NOTHING;
 
 -- name: RevokePermissionFromRole :execrows
 DELETE FROM role_permission WHERE role_id = $1 AND resource = $2 AND permission_id = $3;
+
+-- name: GetRolePermissionsByRoleID :many
+SELECT rp.* FROM role_permission rp
+WHERE rp.role_id = $1 AND rp.resource = $2;

@@ -5,9 +5,18 @@ meta {
 }
 
 post {
-  url: Register
-  body: none
+  url: {{api}}/auth/register
+  body: json
   auth: inherit
+}
+
+body:json {
+  {
+    "name": "Arash",
+    "email": "arashn2y@gmail.com",
+    "password": "Arash2025!",
+    "passwordConf": "Arash2025!"
+  }
 }
 
 settings {
