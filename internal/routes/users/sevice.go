@@ -11,8 +11,8 @@ import (
 )
 
 type Service interface {
-	Users(ctx context.Context) ([]models.User, error)
-	GetUserByID(ctx context.Context, id pgtype.UUID) (models.User, error)
+	Users(ctx context.Context) (*[]models.User, error)
+	GetUserByID(ctx context.Context, id pgtype.UUID) (*models.User, error)
 }
 
 type service struct {
@@ -27,19 +27,21 @@ func NewService(db *repository.Queries, permission permissions.Service) Service 
 	}
 }
 
-func (s *service) Users(ctx context.Context) ([]models.User, error) {
+func (s *service) Users(ctx context.Context) (*[]models.User, error) {
 	err := s.permission.CheckPermission(ctx, string(constants.ResourceUsers), string(constants.PermissionRead))
 
 	if err != nil {
-		return []models.User{}, err
+		return nil, err
 	}
 
 	users, err := s.repository.GetAllUsers(ctx)
 
 	if err != nil {
-		return []models.User{}, err
+		return nil, err
 	}
+
 	result := make([]models.User, len(users))
+
 	for i, user := range users {
 		result[i] = models.User{
 			ID:       user.ID,
@@ -49,27 +51,31 @@ func (s *service) Users(ctx context.Context) ([]models.User, error) {
 			IsActive: user.IsActive,
 		}
 	}
-	return result, nil
+
+	return &result, nil
 }
 
-func (s *service) GetUserByID(ctx context.Context, id pgtype.UUID) (models.User, error) {
+func (s *service) GetUserByID(ctx context.Context, id pgtype.UUID) (*models.User, error) {
+	result := &models.User{}
 	err := s.permission.CheckPermission(ctx, string(constants.ResourceUsers), string(constants.PermissionRead))
 
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
 
 	user, err := s.repository.GetUserByID(ctx, id)
 
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
 
-	return models.User{
+	result = &models.User{
 		ID:       user.ID,
 		Email:    user.Email,
 		Name:     user.Name,
 		RoleID:   user.RoleID,
 		IsActive: user.IsActive,
-	}, nil
+	}
+
+	return result, nil
 }

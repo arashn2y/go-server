@@ -13,7 +13,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-type LoginResponse struct {
+type Login struct {
 	Token       string                             `json:"token"`
 	Permissions []repository.GetUserPermissionsRow `json:"permissions"`
 	ID          pgtype.UUID                        `json:"id"`

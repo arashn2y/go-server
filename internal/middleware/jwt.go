@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/arashn0uri/go-server/internal/constants"
-	"github.com/arashn0uri/go-server/internal/routes/auth"
+	"github.com/arashn0uri/go-server/internal/utils"
 )
 
 func Auth(next http.Handler) http.Handler {
@@ -18,7 +18,7 @@ func Auth(next http.Handler) http.Handler {
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		claims, err := auth.ValidateToken(tokenStr)
+		claims, err := utils.ValidateToken(tokenStr)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
